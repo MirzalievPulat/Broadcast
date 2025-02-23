@@ -62,10 +62,10 @@ class AppBroadcast : BroadcastReceiver() {
             Intent.ACTION_HEADSET_PLUG ->{
                 if (localStorage.headSetMode){
                     val state = intent.getIntExtra("state", -1)
-                    if (state == 1) {
-                        speakText("Headset connected")
-                    } else if (state == 0) {
-                        speakText("Headset disconnected")
+                    when (state) {
+                        1 -> speakText("Headset connected")   // Plugged in
+                        0 -> speakText("Headset disconnected") // Unplugged
+                        else -> Log.d("TAG", "Invalid headset state: $state") // Ignore unknown states
                     }
                 }
             }

@@ -1,13 +1,12 @@
 package uz.polat.broadcast
 
+import android.Manifest
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -41,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import uz.polat.broadcast.repository.LocalStorage
 import uz.polat.broadcast.ui.theme.BroadcastTheme
@@ -50,11 +50,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val intent = Intent(this, ReceiverRegisterService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0)
         }
 
         setContent {
@@ -65,17 +62,26 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-
 @Composable
 fun MainContent() {
 
     val systemUiController = rememberSystemUiController()
     val color = MaterialTheme.colorScheme.primary
+    val context = LocalContext.current
     SideEffect {
         systemUiController.setStatusBarColor(
             color = color, darkIcons = color == Color.White
         )
         systemUiController.setNavigationBarColor(color = color)
+    }
+
+    fun stopService() {
+        context.stopService(
+            Intent(
+                context,
+                ReceiverRegisterService::class.java
+            )
+        )
     }
 
     val localStorage = LocalStorage.getInstance(LocalContext.current)
@@ -88,26 +94,48 @@ fun MainContent() {
             color = MaterialTheme.colorScheme.primary,
             shadowElevation = 4.dp
         ) {
-            Column(
-                modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween
+            Row(
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f), contentAlignment = Alignment.CenterStart
-                ) {
-                    Text(
-                        text = "Maxmadona",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(start = 16.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
+
+                val appWorking = remember { mutableStateOf(localStorage.appWorking) }
+                localStorage.appWorking = appWorking.value
+
+                Text(
+                    text = if (appWorking.value) "Maxmadona yoniq" else "Maxmadona o'chiq",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(start = 16.dp),
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+
+                Switch(
+                    checked = appWorking.value,
+                    colors = SwitchDefaults.colors(
+                        uncheckedTrackColor = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor = MaterialTheme.colorScheme.onPrimary,
+                        uncheckedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                        uncheckedBorderColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    onCheckedChange = {
+                        appWorking.value = it
+                        if (it) {
+                            val intent = Intent(context, ReceiverRegisterService::class.java)
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                context.startForegroundService(intent)
+                            } else {
+                                context.startService(intent)
+                            }
+                        } else {
+                            stopService()
+                        }
+                    },
+                    modifier = Modifier.padding(start = 16.dp),
+                )
 
             }
         }
-
 
     }) { innerPadding ->
 
@@ -172,9 +200,11 @@ fun MainContent() {
             val network = remember { mutableStateOf(localStorage.networkMode) }
             localStorage.networkMode = network.value
 
-            Text(text = "Faqat ilova ichida:",
+            Text(
+                text = "Faqat ilova ishlayotganda:",
                 style = TextStyle(color = MaterialTheme.colorScheme.onPrimary),
-                modifier = Modifier.padding(vertical = 8.dp, horizontal = 20.dp))
+                modifier = Modifier.padding(vertical = 8.dp, horizontal = 20.dp)
+            )
             ItemModes(
                 image = R.drawable.language_24px, text = "Internet", state = network
             )
@@ -232,7 +262,6 @@ fun ItemModes(
             onCheckedChange = {
                 state.value = it
             },
-
-            )
+        )
     }
 }

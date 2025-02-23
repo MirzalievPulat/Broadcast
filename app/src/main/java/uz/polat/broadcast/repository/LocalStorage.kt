@@ -24,6 +24,7 @@ class LocalStorage(context: Context) : SharedPreference(context) {
     var timeMode: Boolean by booleans()
     var blueToothMode: Boolean by booleans()
     var networkMode: Boolean by booleans()
+    var appWorking: Boolean by booleans()
 
 }
 
